@@ -6,9 +6,11 @@ llama-index-retrievers-bm25
 llama-index-vector-stores-qdrant
 qdrant_client
 ollama
-transformers
+git+https://github.com/huggingface/transformers
 python-dotenv
 
 jupyter
 ipywidgets
 psutil
+
+whisper-cpp-python
