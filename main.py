@@ -23,7 +23,9 @@ splitter = SentenceSplitter(chunk_size=512, chunk_overlap=128)
 st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
 st.title("Petranesian Pintar")
 st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
-st.session_state.chat_mode = False
+
+if "chat_mode" not in st.session_state:
+    st.session_state.chat_mode = False
 
 
 def generate_filename(ext):
@@ -169,10 +171,20 @@ if "questions" in st.session_state and st.session_state.question_index < len(
                     content += str(full_str)
                     st.write("\n\n")
                     content += "\n\n"
+            st.session_state.messages.append(dict(
+                role="assistant",
+                content=content
+            ))
 
             st.session_state.chat_mode = True
+            # chat("assistant", "Feel free to ask for further explanation!")
             del answer
         else:
             question = st.session_state.questions[st.session_state.question_index]
             chat("assistant", question)
         st.session_state.next_question = False
+
+# if st.session_state.chat_mode:
+#     answer = st.chat_input("Ask me anything!")
+#     if answer is not None:
+#         chat("user", answer)
