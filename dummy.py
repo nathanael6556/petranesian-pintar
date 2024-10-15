@@ -1,4 +1,4 @@
-USE_DUMMY = True
+USE_DUMMY = False
 
 DUMMY_SUMMARY = """**Multicast Communication**
 
