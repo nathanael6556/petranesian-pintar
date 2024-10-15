@@ -2,8 +2,8 @@
 **/__pycache__
 .env
 output/*
-
-
+storage/uploads
+*.bin
 
 
 !**/.gitkeep
