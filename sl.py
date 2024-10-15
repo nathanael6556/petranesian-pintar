@@ -120,13 +120,3 @@ def derive_questions_from_materials(documents: list[Document]) -> tuple:
     questions = derive_questions("\n".join(summaries))
 
     return (summaries, questions)
-
-
-documents: list[Document] = []
-
-for file in ["samples/Lecture04/transcribe.txt", "samples/Lecture04/pdf_text.txt"]:
-    with open(file, "r", errors="ignore") as f:
-        text = f.read()
-        documents.append(Document(text=text))
-
-print(derive_questions_from_materials(documents))
