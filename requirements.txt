@@ -13,4 +13,5 @@ jupyter
 ipywidgets
 psutil
 
+pypdf
 whisper-cpp-python

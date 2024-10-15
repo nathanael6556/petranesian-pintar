@@ -29,7 +29,9 @@ model = "llama3.1:8b-instruct-q4_0"
 embed_model = "mxbai-embed-large:latest"
 ollama_endpoint = "http://127.0.0.1:11434"
 
-c = Client(ollama_endpoint, timeout=300)
+
+c = Client(ollama_endpoint, timeout=600)
+
 Settings.llm = Ollama(model=model, base_url=ollama_endpoint)
 Settings.embed_model = OllamaEmbedding(base_url=ollama_endpoint, model_name=embed_model)
 
@@ -38,6 +40,7 @@ summariser_splitter = SentenceSplitter(chunk_size=15 * 1024, chunk_overlap=512)
 
 
 def summarise(d: Document) -> str:
+    summaries = []
     for chunk in summariser_splitter.split_text(d.text):
         result = c.generate(
             model=model,
@@ -60,14 +63,14 @@ You must include all crucial information. You must not add any information that 
             },
         )
 
-    response = result["response"].strip()
-    logging.info(
-        f"""
+        response = result["response"].strip()
+        logging.info(f"""
 [Summary]
 {response}
-"""
-    )
-    return response
+""")
+        summaries.append(response)
+    return "\n\n".join(summaries)
+
 
 
 # Create questions from summary
