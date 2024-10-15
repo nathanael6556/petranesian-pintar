@@ -4,10 +4,10 @@ from llama_index.core import Document
 import streamlit as st
 from converter import transcribe, pdf2text
 from sl import summarise, derive_questions
+import dummy
 
 
 UPLOADS_DIR = "./storage/uploads"
-
 
 st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
 st.title("Petranesian Pintar")
@@ -76,11 +76,17 @@ if (
         )
     ]
     print("Summarizing")
-    summary = "\n\n".join([summarise(document) for document in documents])
+    if dummy.USE_DUMMY:
+        summary = dummy.DUMMY_SUMMARY
+    else:
+        summary = "\n\n".join([summarise(document) for document in documents])
     print("Done")
     st.session_state.summary = summary
 
-    questions = derive_questions(st.session_state.summary)
+    if dummy.USE_DUMMY:
+        questions = dummy.DUMMY_QUESTIONS
+    else:
+        questions = derive_questions(st.session_state.summary)
     st.session_state.questions = questions
     st.session_state.question_index = 0
     st.session_state.next_question = True
