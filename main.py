@@ -141,18 +141,17 @@ if st.session_state.chat_mode:
         index = VectorStoreIndex.from_documents(documents, show_progress=True)
         chat_history = [ChatMessage(**message) for message in st.session_state.messages]
         memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history, token_limit=16384)
-        chat_engine = index.as_chat_engine(
-            chat_mode="condense_plus_context",
+        chat_engine = ContextChatEngine.from_defaults(
+            retriever=st.session_state.retriever,
+            chat_history=chat_history,
             memory=memory,
-            llm=Settings.llm,
-            context_prompt=(
+            context_template=(
                 "You are a teacher guiding a student."
                 "Give the student constructive criticism with the given context."
                 "Here are the relevant documents for the context:\n"
                 "{context_str}"
                 "\nInstruction: Use the previous chat history, or the context above, to interact and help the student."
-            ),
-            verbose=False,
+            )
         )
         st.session_state.chat_engine = chat_engine
     answer = st.chat_input("Ask me anything!")
