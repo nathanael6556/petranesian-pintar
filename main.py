@@ -8,11 +8,12 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.chat_engine import ContextChatEngine
 from llama_index.core.retrievers import QueryFusionRetriever
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, Document
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core import get_response_synthesizer
+from llama_index.core.prompts import ChatMessage
 import dummy
 
 
@@ -91,6 +92,11 @@ def chat(role, content):
     st.chat_message(role).write(content)
 
 
+def chat_stream(role, generator, content_getter):
+    st.chat_message(role).write_stream(generator)
+    st.session_state.messages.append(dict(role=role, content=content_getter()))
+
+
 if (
     "transcript" in st.session_state
     and "material" in st.session_state
@@ -128,6 +134,33 @@ if (
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+
+if st.session_state.chat_mode:
+    if "chat_engine" not in st.session_state:
+        documents = st.session_state.documents
+        index = VectorStoreIndex.from_documents(documents, show_progress=True)
+        chat_history = [ChatMessage(**message) for message in st.session_state.messages]
+        memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history, token_limit=16384)
+        chat_engine = index.as_chat_engine(
+            chat_mode="condense_plus_context",
+            memory=memory,
+            llm=Settings.llm,
+            context_prompt=(
+                "You are a teacher guiding a student."
+                "Give the student constructive criticism with the given context."
+                "Here are the relevant documents for the context:\n"
+                "{context_str}"
+                "\nInstruction: Use the previous chat history, or the context above, to interact and help the student."
+            ),
+            verbose=False,
+        )
+        st.session_state.chat_engine = chat_engine
+    answer = st.chat_input("Ask me anything!")
+    if answer is not None:
+        chat("user", answer)
+        with st.spinner("Thinking..."):
+            response_stream = st.session_state.chat_engine.stream_chat(answer)
+            chat_stream("assistant", response_stream.response_gen, lambda : response_stream.response)
 
 if "questions" in st.session_state and st.session_state.question_index < len(
     st.session_state.questions
@@ -177,14 +210,10 @@ if "questions" in st.session_state and st.session_state.question_index < len(
             ))
 
             st.session_state.chat_mode = True
-            # chat("assistant", "Feel free to ask for further explanation!")
+            chat("assistant", "Feel free to ask for further explanation!")
             del answer
+            st.rerun()
         else:
             question = st.session_state.questions[st.session_state.question_index]
             chat("assistant", question)
         st.session_state.next_question = False
-
-# if st.session_state.chat_mode:
-#     answer = st.chat_input("Ask me anything!")
-#     if answer is not None:
-#         chat("user", answer)
