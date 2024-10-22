@@ -1,6 +1,6 @@
 import whisper
 from whisper.utils import get_writer
-model = whisper.load_model('large')
+model = whisper.load_model('turbo')
 
 
 def get_transcribe(audio: str, language: str = 'en'):
@@ -13,7 +13,7 @@ def save_file(results, format='tsv'):
 
 
 if __name__ == "__main__":
-    result = get_transcribe(audio='./samples/DS Lect04 Communication.mp3', language='id')
+    result = get_transcribe(audio='./samples/Lecture04/DS-Lct04-Communication.mp3', language='id')
     print('-'*50)
     print(result.get('text', ''))
     save_file(result)

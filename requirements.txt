@@ -13,4 +13,7 @@ ipywidgets
 psutil
 
 pypdf
-whisper-cpp-python
+torch --index-url https://download.pytorch.org/whl/rocm6.2
+torchvision --index-url https://download.pytorch.org/whl/rocm6.2
+torchaudio --index-url https://download.pytorch.org/whl/rocm6.2
+openai-whisper
