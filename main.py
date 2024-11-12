@@ -116,6 +116,8 @@ if (
             summary = "\n\n".join([summarise(document) for document in documents])
 
     st.session_state.summary = summary
+    with st.expander("Summary"):
+        st.write(summary)
 
     with st.spinner("Creating questions..."):
         if dummy.USE_DUMMY:
