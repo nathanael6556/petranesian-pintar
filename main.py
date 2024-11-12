@@ -117,6 +117,8 @@ if (
         summary = summarise(Document(text=summary, extra_info={"type": "raw transcription and material"}))
 
     st.session_state.summary = summary
+    with st.expander("Summary"):
+        st.write(summary)
 
     with st.spinner("Creating questions..."):
         if dummy.USE_DUMMY:
