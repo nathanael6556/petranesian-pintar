@@ -114,6 +114,7 @@ if (
             summary = dummy.DUMMY_SUMMARY
         else:
             summary = "\n\n".join([summarise(document) for document in documents])
+        summary = summarise(Document(text=summary, extra_info={"type": "raw transcription and material"}))
 
     st.session_state.summary = summary
 

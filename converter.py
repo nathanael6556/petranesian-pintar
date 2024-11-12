@@ -3,7 +3,7 @@ from os.path import splitext
 from pypdf import PdfReader
 import whisper
 import dummy
-
+import pymupdf4llm
 
 model = whisper.load_model('turbo')
 
@@ -33,6 +33,4 @@ def pdf2text(path, splitter="\n\n"):
     if dummy.USE_DUMMY:
         return dummy.DUMMY_MATERIAL
 
-    reader = PdfReader(path)
-    texts = [page.extract_text() for page in reader.pages]
-    return splitter.join(texts)
+    return pymupdf4llm.to_markdown(path)
