@@ -1,5 +1,6 @@
 from os.path import splitext
 import uuid
+import os
 from llama_index.core import Document
 import streamlit as st
 from converter import transcribe, pdf2text
@@ -51,6 +52,16 @@ material = None
 c1, c2 = st.columns(2)
 audio_file = c1.file_uploader("Audio")
 pdf_file = c2.file_uploader("PDF")
+
+storage_folder_path = "storage"
+upload_folder_path = "storage/uploads"
+
+if not os.path.exists(upload_folder_path):
+    if not os.path.exists(storage_folder_path):
+        os.makedirs(storage_folder_path)
+        os.makedirs(upload_folder_path)
+    else:
+        os.makedirs(upload_folder_path)
 
 if audio_file is not None and "transcript" not in st.session_state:
     audio_path = save_file(audio_file)
