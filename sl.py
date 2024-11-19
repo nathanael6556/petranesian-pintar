@@ -21,11 +21,11 @@ import re
 # Prepare Environment
 load_dotenv()
 nest_asyncio.apply()
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.WARN)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 # Base Settings
-model = "llama3.2-vision:11b-instruct-q4_K_M"
+model = "qwen2.5-coder:32b-instruct-q5_1"
 embed_model = "mxbai-embed-large:latest"
 ollama_endpoint = "http://127.0.0.1:11434"
 
@@ -36,12 +36,13 @@ Settings.llm = Ollama(model=model, base_url=ollama_endpoint)
 Settings.embed_model = OllamaEmbedding(base_url=ollama_endpoint, model_name=embed_model)
 
 # Summariser
-summariser_splitter = SemanticSplitterNodeParser.from_defaults(Settings.embed_model, buffer_size=15*1024)
+summariser_splitter = SemanticSplitterNodeParser.from_defaults(Settings.embed_model, buffer_size=31*1024)
 
 
 def summarise(d: Document) -> str:
     summaries = []
-    for chunk in summariser_splitter.build_semantic_nodes_from_documents([d], True):
+    for node in summariser_splitter.build_semantic_nodes_from_documents([d], True):
+        chunk = node.get_content()
         result = c.generate(
             model=model,
             prompt=(
@@ -49,6 +50,7 @@ def summarise(d: Document) -> str:
 Clean up the document by structuring the information into points.
 Fix and correct grammatical and language errors.
 You must include all crucial information. You must not add any information that is not in the document.
+IMPORTANT: Provide ONLY the summary paragraph in Markdown. Do not include any introductory phrases, labels, or meta-text like "Here's a summary". Start directly with the summary content.
 
 <Document>
 {chunk}
@@ -59,7 +61,7 @@ You must include all crucial information. You must not add any information that 
             options={
                 "temperature": 0.2,
                 "num_ctx": 16 * 1024,
-                "num_predict": 2 * 1024,
+                "num_predict": 4 * 1024,
             },
         )
 
