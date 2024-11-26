@@ -53,18 +53,19 @@ audio_file = c1.file_uploader("Audio")
 pdf_file = c2.file_uploader("PDF")
 
 if audio_file is not None and "transcript" not in st.session_state:
-    audio_path = save_file(audio_file)
-    transcript = transcribe(audio_path)
-    st.session_state.transcript = transcript
+    with st.spinner("Transcribing audio..."):
+        audio_path = save_file(audio_file)
+        transcript = transcribe(audio_path)
+        st.session_state.transcript = transcript
 
 if pdf_file is not None and "material" not in st.session_state:
-    pdf_path = save_file(pdf_file)
-    material = pdf2text(pdf_path)
-    st.session_state.material = material
+    with st.spinner("Extracting text from PDF..."):
+        pdf_path = save_file(pdf_file)
+        material = pdf2text(pdf_path)
+        st.session_state.material = material
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
 
 def prepare_retriever(documents: list[Document]):
     with st.spinner(text="Preparing data..."):
@@ -96,6 +97,10 @@ def chat_stream(role, generator, content_getter):
     st.chat_message(role).write_stream(generator)
     st.session_state.messages.append(dict(role=role, content=content_getter()))
 
+if "transcript" in st.session_state:
+    with st.expander("Transcript"):
+        st.download_button("Download transcript", st.session_state.transcript, "transcript.txt", "text/plain ")
+        st.write(st.session_state.transcript)
 
 if (
     "transcript" in st.session_state
@@ -110,21 +115,13 @@ if (
         Document(text=st.session_state.material, extra_info={"type": "raw material"}),
     ]
     with st.spinner("Summarizing..."):
-        if dummy.USE_DUMMY:
-            summary = dummy.DUMMY_SUMMARY
-        else:
-            summary = "\n\n".join([summarise(document) for document in documents])
-        summary = summarise(Document(text=summary, extra_info={"type": "raw transcription and material"}))
+        summary = "\n\n".join([summarise(document) for document in documents])
+        summary = summarise(Document(text=summary, extra_info={"type": "summary of transcription and material"}))
 
     st.session_state.summary = summary
-    with st.expander("Summary"):
-        st.write(summary)
 
     with st.spinner("Creating questions..."):
-        if dummy.USE_DUMMY:
-            questions = dummy.DUMMY_QUESTIONS
-        else:
-            questions = derive_questions(st.session_state.summary)
+        questions = derive_questions(st.session_state.summary)
 
     st.session_state.documents = documents + [
         Document(text=summary, extra_info={"type": "summary"})
@@ -133,6 +130,11 @@ if (
     st.session_state.answers = []
     st.session_state.question_index = 0
     st.session_state.next_question = True
+
+if "summary" in st.session_state:
+    with st.expander("Summary"):
+        st.download_button("Download summary", st.session_state.summary, "summary.md", "text/markdown ")
+        st.write(st.session_state.summary)
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
