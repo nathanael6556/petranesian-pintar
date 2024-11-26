@@ -6,7 +6,7 @@ from llama_index.readers.file import CSVReader
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core import Settings
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.node_parser import SemanticSplitterNodeParser
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.chat_engine import CondensePlusContextChatEngine
 from llama_index.core.retrievers import QueryFusionRetriever
@@ -36,13 +36,13 @@ Settings.llm = Ollama(model=model, base_url=ollama_endpoint)
 Settings.embed_model = OllamaEmbedding(base_url=ollama_endpoint, model_name=embed_model)
 
 # Summariser
-summariser_splitter = SemanticSplitterNodeParser.from_defaults(Settings.embed_model, buffer_size=31*1024)
+summariser_splitter = SentenceSplitter(chunk_size=4 * 1024, chunk_overlap=512)
 
 
 def summarise(d: Document, language_str="Bahasa Indonesia",) -> str:
     summaries = []
-    for node in summariser_splitter.build_semantic_nodes_from_documents([d], True):
-        chunk = node.get_content()
+    for chunk in summariser_splitter.split_text(d.text):
+        print("Summarising chunk with length", len(chunk))
         result = c.generate(
             model=model,
             prompt=(
