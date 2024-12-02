@@ -38,14 +38,14 @@ Settings.embed_model = OllamaEmbedding(base_url=ollama_endpoint, model_name=embe
 summariser_splitter = SentenceSplitter(chunk_size=1.5*1024, chunk_overlap=256)
 
 
-def summarise(d: Document) -> str:
+def summarise(d: Document, language_str="Bahasa Indonesia") -> str:
     summaries = []
     for chunk in summariser_splitter.split_text(d.text):
         print("Summarising chunk with length", len(chunk))
         result = c.generate(
             model=model,
             prompt=(
-                f"""Clean up the given document and restructure it using Markdown.
+                f"""Clean up the given document and restructure it using Markdown in {language_str}.
 Clean up the document by structuring the information into points.
 Fix and correct grammatical and language errors.
 You must include all crucial information. You must not add any information that is not in the document.
@@ -119,12 +119,12 @@ Generate only the questions in the following format and in {language_str}:
 
 
 # Create questions from materials
-def derive_questions_from_materials(documents: list[Document]) -> tuple:
+def derive_questions_from_materials(documents: list[Document], language_str="Bahasa Indonesia", question_amount=5) -> tuple:
     # Get the summaries
-    summaries = map(summarise, documents)
+    summaries = map(lambda x: summarise(x, language_str), documents)
 
     # Create questions
-    questions = derive_questions("\n".join(summaries))
+    questions = derive_questions("\n".join(summaries), language_str, question_amount)
 
     return (summaries, questions)
 
