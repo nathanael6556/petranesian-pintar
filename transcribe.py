@@ -1,10 +1,19 @@
 import whisper
 from whisper.utils import get_writer
-model = whisper.load_model('turbo')
+from custom_whisper import transcribe
+from typing import Callable
 
+model: whisper.Whisper | None = None
 
-def get_transcribe(audio: str, language: str = 'en'):
-    return model.transcribe(audio=audio, language=language, verbose=True)
+def get_transcribe(audio: str, language: str = 'en', progress_callback: Callable[[int, int], None] = lambda a,b: None):
+    global model
+
+    # Lazy loading to improve startup performance.
+    if not model:
+        model = whisper.load_model('turbo')
+
+    # return transcribe(model, audio=audio, language=language, verbose=True)
+    return transcribe(model, audio=audio, language=language, progress_callback=progress_callback)
 
 
 def save_file(results, format='tsv'):
@@ -13,7 +22,10 @@ def save_file(results, format='tsv'):
 
 
 if __name__ == "__main__":
-    result = get_transcribe(audio='./samples/Lecture04/DS-Lct04-Communication.mp3', language='id')
+    def pg(total, current):
+        print(f"Processed {current} out of {total} sections")
+
+    result = get_transcribe(audio='./samples/Lecture04/DS-Lct04-Communication.mp3', language='id', progress_callback=pg)
     print('-'*50)
     print(result.get('text', ''))
     save_file(result)

@@ -4,11 +4,12 @@ from pypdf import PdfReader
 import whisper
 import dummy
 import pymupdf4llm
+import custom_whisper
+from typing import Callable
 
-model = whisper.load_model('turbo')
+model: whisper.Whisper | None = None
 
-
-def transcribe(path, language='id', verbose=True):
+def transcribe(path, language='id', verbose=False, progress_callback: Callable[[int, int], None] = lambda a,b: None):
     if dummy.USE_DUMMY:
         return dummy.DUMMY_TRANSCRIPT
 
@@ -21,11 +22,14 @@ def transcribe(path, language='id', verbose=True):
     else:
         input_path = path
 
-    def callback(ctx, state, i, p):
-        print(i, "%", sep="")
+    global model
+
+    # Lazy loading to improve startup performance.
+    if not model:
+        model = whisper.load_model('turbo')
 
     print("Transcribing...")
-    transcript = model.transcribe(audio=input_path, language=language, verbose=verbose)
+    transcript = custom_whisper.transcribe(model, audio=input_path, language=language, verbose=verbose, progress_callback=progress_callback)
     return transcript["text"]
 
 

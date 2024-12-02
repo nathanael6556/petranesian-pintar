@@ -1,7 +1,12 @@
+import streamlit as st
+st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
+st.title("Petranesian Pintar")
+st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
+
+
 from os.path import splitext
 import uuid
 from llama_index.core import Document
-import streamlit as st
 from converter import transcribe, pdf2text
 from sl import summarise, derive_questions
 from llama_index.core.node_parser import SentenceSplitter
@@ -15,15 +20,19 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core import get_response_synthesizer
 from llama_index.core.prompts import ChatMessage
 import dummy
+import asyncio
+
+loop = asyncio.get_event_loop()
+
+import time
+
+
+def get_ms():
+    return time.time_ns() // 1_000_000
 
 
 UPLOADS_DIR = "./storage/uploads"
 splitter = SentenceSplitter(chunk_size=512, chunk_overlap=128)
-
-
-st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
-st.title("Petranesian Pintar")
-st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
 
 if "chat_mode" not in st.session_state:
     st.session_state.chat_mode = False
@@ -49,14 +58,28 @@ def save_file(file):
 transcript = None
 material = None
 c1, c2 = st.columns(2)
-audio_file = c1.file_uploader("Audio")
-pdf_file = c2.file_uploader("PDF")
+audio_file = c1.file_uploader("Audio", type=["mp3", "wav", "m4a"])
+pdf_file = c2.file_uploader("PDF", type=["pdf"])
 
 if audio_file is not None and "transcript" not in st.session_state:
-    with st.spinner("Transcribing audio..."):
+    with st.spinner("Processing audio..."):
+        progress_bar = st.progress(0., "Transcoding audio...")
         audio_path = save_file(audio_file)
-        transcript = transcribe(audio_path)
+        total_progress = 0
+        start_time = get_ms()
+
+        def update_progress(total, current_rate):
+            global total_progress
+            total_progress += current_rate
+            percent_complete = total_progress / total
+            frames_per_second = total_progress / ((get_ms() - start_time) / 1000)
+            estimated_done_seconds = int((total - total_progress) // frames_per_second)
+            progress_bar.progress(percent_complete, text=f"Transcribing Audio ({total_progress}/{total} frames, {frames_per_second:.2f} frames/s, around {estimated_done_seconds} seconds left.)")
+
+        transcript = transcribe(audio_path, progress_callback=update_progress)
         st.session_state.transcript = transcript
+
+        progress_bar.empty()
 
 if pdf_file is not None and "material" not in st.session_state:
     with st.spinner("Extracting text from PDF..."):
@@ -115,8 +138,21 @@ if (
         Document(text=st.session_state.material, extra_info={"type": "raw material"}),
     ]
     with st.spinner("Summarizing..."):
-        summary = "\n\n".join([summarise(document) for document in documents])
-        summary = summarise(Document(text=summary, extra_info={"type": "summary of transcription and material"}))
+        summaries = []
+        progress_bar = st.progress(0., f"Summarizing: (Document 1/{len(documents)}, 0/? chunks)...")
+
+        for idx, document in enumerate(documents):
+
+            def progress_callback(total_processed, total_chunks):
+                progress_bar.progress(total_processed / total_chunks, f"Summarizing: (Document {idx+1}/{len(documents)}, {total_processed}/{total_chunks} chunks)...")
+
+            summary = loop.run_until_complete(summarise(document, progress_callback))
+            summaries.append(summary)
+
+        summary = "\n\n".join(summaries)
+        summary = loop.run_until_complete(summarise(Document(text=summary, extra_info={"type": "summary of transcription and material"})))
+
+        progress_bar.empty()
 
     st.session_state.summary = summary
 
