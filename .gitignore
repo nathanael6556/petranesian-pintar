@@ -3,6 +3,7 @@
 .env
 output/*
 storage/uploads
+storage/users
 *.bin
 
 

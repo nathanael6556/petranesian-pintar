@@ -18,6 +18,10 @@ import dummy
 import asyncio
 import time
 
+# Make sure user is specified
+if not "user" in st.session_state:
+    st.rerun()
+
 loop = asyncio.get_event_loop()
 
 
@@ -164,7 +168,7 @@ def main():
                 summaries.append(summary)
 
             summary = "\n\n".join(summaries)
-            progress_bar = st.progress(1., f"Creating a merged summary...")
+            progress_bar = progress_bar.progress(1., f"Creating a merged summary...")
             summary = loop.run_until_complete(summarise(Document(text=summary, extra_info={"type": "summary of transcription and material"})))
             st.session_state.summary = summary
             st.session_state.documents = documents + [
