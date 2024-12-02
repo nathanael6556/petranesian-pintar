@@ -112,7 +112,7 @@ def main():
             start_time = get_ms()
 
             def update_progress(total, current_rate):
-                global total_progress
+                nonlocal total_progress
                 total_progress += current_rate
                 percent_complete = total_progress / total
                 frames_per_second = total_progress / ((get_ms() - start_time) / 1000)
