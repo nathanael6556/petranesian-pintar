@@ -10,9 +10,6 @@ from typing import Callable
 model: whisper.Whisper | None = None
 
 def transcribe(path, language='id', verbose=False, progress_callback: Callable[[int, int], None] = lambda a,b: None):
-    if dummy.USE_DUMMY:
-        return dummy.DUMMY_TRANSCRIPT
-
     # Convert audio to WAV
     if not path.endswith(".wav"):
         input_path, _ = splitext(path)
@@ -34,7 +31,4 @@ def transcribe(path, language='id', verbose=False, progress_callback: Callable[[
 
 
 def pdf2text(path, splitter="\n\n"):
-    if dummy.USE_DUMMY:
-        return dummy.DUMMY_MATERIAL
-
     return pymupdf4llm.to_markdown(path)
