@@ -25,13 +25,10 @@ from converter import transcribe, pdf2text
 from sl import summarise, derive_questions
 
 
-if "language" in st.session_state:
-    session.save_session(st.session_state)
-else:
-    try:
-        session.load_session(st.session_state)
-    except FileNotFoundError:
-        pass
+try:
+    session.load_session(st.session_state)
+except FileNotFoundError:
+    pass
 
 # Make sure user is specified
 if "user" not in st.session_state:
