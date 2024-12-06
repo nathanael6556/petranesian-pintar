@@ -105,7 +105,7 @@ def main():
     st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
 
     if "chat_mode" not in st.session_state:
-        st.session_state.chat_mode = False    
+        st.session_state.chat_mode = False
 
     if "language" not in st.session_state:
         selected_language = st.radio(
@@ -116,6 +116,7 @@ def main():
         confirm_language = st.button("Confirm language")
         if (confirm_language):
             st.session_state.language = selected_language
+            session.save_session(st.session_state)
             st.rerun()
         return
 
