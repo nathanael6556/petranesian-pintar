@@ -41,3 +41,30 @@ def get_sections() -> list[str]:
     
 active_section = st.selectbox("Selected section", get_sections())
 uploaded_files = st.file_uploader("Upload files", type=["pdf", "md", "txt", "mp3", "m4a", "wav"], accept_multiple_files=True)
+
+if uploaded_files and active_section:
+    for uploaded_file in uploaded_files:
+        bytes_data = uploaded_file.read()
+        file_name = uploaded_file.name
+        
+        final_path = os.path.join(user.get_base_path(), "topics", active_section, file_name)
+        with open(final_path, "wb") as f:
+            f.write(bytes_data)
+
+@st.fragment
+def render_file(file_path: str):
+    # Make sure it is a file
+    if not os.path.isfile(file_path):
+        return
+    
+    with st.container(border=True):
+        file_name = os.path.basename(file_path)
+        st.markdown(f"{file_name}")
+        st.download_button(file_name, file_path, "Download")
+    
+if active_section:
+    # Show all the files in the section
+    files = os.listdir(os.path.join(user.get_base_path(), "topics", active_section))
+
+    for file in files:
+        render_file(os.path.join(user.get_base_path(), "topics", active_section, file))

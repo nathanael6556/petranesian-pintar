@@ -96,7 +96,6 @@ def save_file(file):
         f.write(file.getvalue())
     return full_path
 
-
 def main():
     st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
     st.title("Petranesian Pintar")
