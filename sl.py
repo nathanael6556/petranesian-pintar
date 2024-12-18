@@ -118,7 +118,7 @@ async def summarise(d: Document, progress_callback: Callable[[int, int], None] =
 
 
 # Create questions from summary
-def derive_questions(summary: str, language_str="Bahasa Indonesia", question_amount=5) -> list[str]:
+def derive_questions(summary: str, language_str="English", question_amount=5) -> list[str]:
     questions = []
     question_re = re.compile(r"\d{1,2}\.\s(.*)")
 
@@ -156,6 +156,10 @@ Generate only the questions in the following format and in {language_str}:
 """)
     questions = question_re.findall(response)
     questions = [q.strip() for q in questions]
+    
+    # Trim to the specified amount
+    if len(questions) > question_amount:
+        questions = questions[:question_amount]
 
     return questions
 

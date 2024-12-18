@@ -23,6 +23,7 @@ import session
 from config import UPLOADS_DIR, ALLOWED_AUDIO_EXT
 from converter import transcribe, pdf2text
 from sl import summarise, derive_questions
+from users import get_st_user
 
 
 try:
@@ -33,6 +34,8 @@ except FileNotFoundError:
 # Make sure user is specified
 if "user" not in st.session_state:
     st.rerun()
+    
+user = get_st_user()
 
 loop = asyncio.get_event_loop()
 
@@ -95,11 +98,6 @@ def save_file(file):
 
 
 def main():
-    languages = {
-        "English": "en",
-        "Indonesia": "id"
-    }
-
     st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
     st.title("Petranesian Pintar")
     st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
@@ -107,18 +105,7 @@ def main():
     if "chat_mode" not in st.session_state:
         st.session_state.chat_mode = False
 
-    if "language" not in st.session_state:
-        selected_language = st.radio(
-            "Language",
-            options=languages,
-            horizontal=True,
-        )
-        confirm_language = st.button("Confirm language")
-        if (confirm_language):
-            st.session_state.language = selected_language
-            session.save_session(st.session_state)
-            st.rerun()
-        return
+    st.session_state.language = user.get_preferred_language_string()
 
     # Audio file hasn't been uploaded
     if "audio_file_path" not in st.session_state:
@@ -292,7 +279,7 @@ def main():
             st.session_state.questions = dummy.DUMMY_QUESTIONS
         else:
             with st.spinner("Creating questions..."):
-                questions = derive_questions(summary)
+                questions = derive_questions(summary, st.session_state.language)
                 st.session_state.questions = questions
 
         st.session_state.answers = []
