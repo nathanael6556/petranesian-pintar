@@ -29,15 +29,21 @@ model = "llama3.2-vision:11b-instruct-q4_K_M"
 embed_model = "mxbai-embed-large:latest"
 ollama_endpoint = "http://127.0.0.1:11434"
 
-
 c = Client(ollama_endpoint, timeout=600)
 ac = AsyncClient(ollama_endpoint, timeout=600)
+
+# Preload the model in Ollama, timeout in 10 minutes
+def model_preload():
+    c.chat(model, None, keep_alive=600)
+    c.embeddings(embed_model, None, keep_alive=600) # type: ignore
+
+model_preload()
 
 Settings.llm = Ollama(model=model, base_url=ollama_endpoint)
 Settings.embed_model = OllamaEmbedding(base_url=ollama_endpoint, model_name=embed_model)
 
 # Summariser
-summariser_splitter = SentenceSplitter(chunk_size=1.5*1024, chunk_overlap=256)
+summariser_splitter = SentenceSplitter(chunk_size=int(1.5*1024), chunk_overlap=256)
 
 
 async def summarise_chunk(chunk: str, language_str: str = "English", done_callback: Callable[[], None] = lambda: None):
@@ -96,7 +102,7 @@ async def summarise(d: Document, progress_callback: Callable[[int, int], None] =
 
     for chunk in summariser_splitter.split_text(d.text):
         print("Summarising chunk with length", len(chunk))
-        tasks.append(summarise_chunk(chunk, on_done))
+        tasks.append(summarise_chunk(chunk, "English", on_done))
 
         if len(tasks) >= 4:
             batch_results = await asyncio.gather(*tasks)

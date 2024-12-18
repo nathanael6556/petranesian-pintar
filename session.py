@@ -23,6 +23,24 @@ def save_session(
     with open(filename, "wb") as f:
         pickle.dump(selected_session, f)
 
+def clear_session(
+    session_state,
+    saved_fields=SESSION_SAVED_FIELDS,
+    filename=None
+):
+    if filename is None:
+        filename = os.path.join(
+            session_state.user.get_base_path(),
+            "session.pkl"
+        )
+
+    with open(filename, "wb") as f:
+        pickle.dump(dict(), f)
+        
+    for field in saved_fields:
+        if not hasattr(session_state, field):
+            continue
+        delattr(session_state, field)
 
 def load_session(
     session_state,
