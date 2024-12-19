@@ -33,9 +33,9 @@ c = Client(ollama_endpoint, timeout=600)
 ac = AsyncClient(ollama_endpoint, timeout=600)
 
 # Preload the model in Ollama, timeout in 10 minutes
-def model_preload():
-    c.chat(model, None, keep_alive=600)
-    c.embeddings(embed_model, None, keep_alive=600) # type: ignore
+async def model_preload():
+    await ac.chat(model, None, keep_alive=600)
+    await ac.embeddings(embed_model, None, keep_alive=600) # type: ignore
 
 model_preload()
 

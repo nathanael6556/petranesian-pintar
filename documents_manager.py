@@ -72,7 +72,7 @@ def get_file_content(file_path: str) -> str:
 def get_processed_files_content(topic_path: str) -> tuple[list[str], list[str]]:
     # Processed files are those with _text.md
     documents = get_documents(topic_path)
-    documents_text_files = [f + ".md" for f in documents]
+    documents_text_files = [f + "_text.md" for f in documents]
     print("documents_text_files: ", documents_text_files)
     # filter exists
     documents_text_files = [f for f in documents_text_files if os.path.exists(os.path.join(topic_path, f))]
