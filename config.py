@@ -14,7 +14,8 @@ SESSION_SAVED_FIELDS = [
     "answers",
     "evaluation_index",
     "chat_mode",
-    "messages"
+    "messages",
+    "topic"
 ]
 
 ALLOWED_AUDIO_EXT = ["mp3", "wav", "aac", "flac", "ogg"]

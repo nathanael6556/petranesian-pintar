@@ -18,6 +18,7 @@ from llama_index.retrievers.bm25 import BM25Retriever
 
 import streamlit as st
 
+from documents_manager import get_documents, get_processed_files_content, get_sections, get_unprocessed_audio_files, get_unprocessed_documents
 import dummy
 import session
 from config import UPLOADS_DIR, ALLOWED_AUDIO_EXT
@@ -96,37 +97,23 @@ def save_file(file):
         f.write(file.getvalue())
     return full_path
 
-def main():
-    st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
-    st.title("Petranesian Pintar")
-    st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
-
-    if "chat_mode" not in st.session_state:
-        st.session_state.chat_mode = False
-
-    st.session_state.language = user.get_preferred_language_string()
-
-    # Audio file hasn't been uploaded
-    if "audio_file_path" not in st.session_state:
-        audio_file = st.file_uploader("Audio", type=ALLOWED_AUDIO_EXT)
-        if audio_file is not None:
-            with st.spinner("Saving audio file..."):
-                st.session_state.audio_file_path = save_file(audio_file)
-                session.save_session(st.session_state)
-
-            # Rerun when both file first time exist simultaneously
-            if "pdf_file_path" in st.session_state:
-                st.rerun()
-
-    # Audio file uploaded but hasn't been transcribed
-    if (
-        "audio_file_path" in st.session_state
-        and "transcript" not in st.session_state
-    ):
-        if dummy.USE_DUMMY:
-            transcript = dummy.DUMMY_TRANSCRIPT
-        else:
-            with st.spinner("Transcribing audio..."):
+def prepare_topic(topic_path: str):
+    # for the topic path, transcribe and extract the text material if does not exist
+    unprocessed_documents = get_unprocessed_documents(topic_path)
+    unprocessed_audio_files = get_unprocessed_audio_files(topic_path)
+    
+    for document_path in unprocessed_documents:
+        base_name = os.path.basename(document_path)
+        with st.spinner(f"Extracting text from {base_name}..."):
+            material = pdf2text(os.path.join(topic_path, document_path))
+            # Save as _text.md
+            text_file = document_path + "_text.md"
+            with open(os.path.join(topic_path, text_file), "w") as f:
+                f.write(material)
+                
+    for audio_file_path in unprocessed_audio_files:
+        base_name = os.path.basename(audio_file_path)
+        with st.spinner(f"Transcribing {base_name}..."):
                 progress_bar = st.progress(0., "Transcoding audio...")
                 total_progress = 0
                 start_time = get_ms()
@@ -154,78 +141,24 @@ def main():
                     )
 
                 transcript = transcribe(
-                    st.session_state.audio_file_path,
+                    os.path.join(topic_path, audio_file_path),
                     progress_callback=update_progress
                 )
+                
+                # Save as _text.md
+                text_file = audio_file_path + "_text.md"
+                with open(os.path.join(topic_path, text_file), "w") as f:
+                    f.write(transcript)
 
                 progress_bar.empty()
-
-        st.session_state.transcript = transcript
-        session.save_session(st.session_state)
-
-    # PDF file hasn't been uploaded
-    if "pdf_file_path" not in st.session_state:
-        pdf_file = st.file_uploader("PDF", type="pdf")
-        if pdf_file is not None:
-            with st.spinner("Saving PDF file..."):
-                st.session_state.pdf_file_path = save_file(pdf_file)
-                session.save_session(st.session_state)
-
-            # Rerun when both file first time exist simultaneously
-            if "audio_file_path" in st.session_state:
-                st.rerun()
-
-    # PDF file uploaded but hasn't been extracted
-    if (
-        "pdf_file_path" in st.session_state
-        and "material" not in st.session_state
-    ):
-        if dummy.USE_DUMMY:
-            st.session_state.material = dummy.DUMMY_MATERIAL
-        else:
-            with st.spinner("Extracting text from PDF..."):
-                material = pdf2text(st.session_state.pdf_file_path)
-                st.session_state.material = material
-                session.save_session(st.session_state)
-
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    if "transcript" in st.session_state:
-        with st.expander("Transcript"):
-            st.download_button(
-                "Download transcript",
-                st.session_state.transcript,
-                "transcript.txt",
-                "text/plain"
-            )
-            st.write(st.session_state.transcript)
-
-    if (
-        "transcript" in st.session_state
-        and "material" in st.session_state
-        and "documents" not in st.session_state
-    ):
-        st.session_state.documents = [
-            Document(
-                text=st.session_state.transcript,
-                extra_info={"type": "raw transcription"}
-            ),
-            Document(
-                text=st.session_state.material,
-                extra_info={"type": "raw material"}
-            )
-        ]
-
-    if (
-        "documents" in st.session_state
-        and "summary" not in st.session_state
-    ):
-        if dummy.USE_DUMMY:
-            st.session_state.summary = dummy.DUMMY_SUMMARY
-        else:
-            with st.spinner("Summarizing..."):
-                documents = st.session_state.documents
+                
+    processed_documents, processed_audio_files = get_processed_files_content(topic_path)
+                
+    # If unprocessed exists, recreate the summary
+    if len(unprocessed_documents) + len(unprocessed_audio_files) > 0:
+        with st.spinner("Summarizing..."):
+            with open(os.path.join(topic_path, "summary.md"), "w") as f:
+                documents = processed_documents + processed_audio_files
                 summaries = []
 
                 progress_text = (
@@ -246,7 +179,9 @@ def main():
                             progress_text
                         )
                     summary = loop.run_until_complete(summarise(
-                        document,
+                        Document(
+                            text=document,
+                        ),
                         progress_callback
                     ))
                     summaries.append(summary)
@@ -260,15 +195,244 @@ def main():
                     text=summary,
                     extra_info={"type": "summary of transcription and material"}
                 )))
-                st.session_state.summary = summary
-                session.save_session(st.session_state)
+                
+                # Write the summary
+                f.write(summary)
 
                 progress_bar.empty()
+                
+    # Read from summary file
+    with open(os.path.join(topic_path, "summary.md"), "r") as f:
+        summary = f.read()
+        
+    return processed_documents, processed_audio_files, summary
+    
 
+def main():
+    st.set_page_config(page_title="Petranesian Pintar", page_icon="🎓")
+    st.title("Petranesian Pintar")
+    st.info("Review materi pembelajaran dengan kuis!", icon="🎓")
+
+    if "chat_mode" not in st.session_state:
+        st.session_state.chat_mode = False
+        
+        
+
+    st.session_state.language = user.get_preferred_language_string()
+    
+    if "topic" not in st.session_state:
+        active_section = st.selectbox("Select topic", ["Empty"] + get_sections(user))
+        if st.button("Start"):
+            if active_section != "Empty":
+                st.session_state.topic = active_section
+            else:
+                st.session_state.topic = None
+            session.save_session(st.session_state)
+            
+            if "topic" in st.session_state:
+                print(st.session_state.topic)
+                
+            st.rerun()
+        
+        
+        return
+        
+    
+    if st.session_state.topic is None:
+        # Audio file hasn't been uploaded
+        if "audio_file_path" not in st.session_state:
+            audio_file = st.file_uploader("Audio", type=ALLOWED_AUDIO_EXT)
+            if audio_file is not None:
+                with st.spinner("Saving audio file..."):
+                    st.session_state.audio_file_path = save_file(audio_file)
+                    session.save_session(st.session_state)
+
+                # Rerun when both file first time exist simultaneously
+                if "pdf_file_path" in st.session_state:
+                    st.rerun()
+
+        # Audio file uploaded but hasn't been transcribed
+        if (
+            "audio_file_path" in st.session_state
+            and "transcript" not in st.session_state
+        ):
+            if dummy.USE_DUMMY:
+                transcript = dummy.DUMMY_TRANSCRIPT
+            else:
+                with st.spinner("Transcribing audio..."):
+                    progress_bar = st.progress(0., "Transcoding audio...")
+                    total_progress = 0
+                    start_time = get_ms()
+
+                    def update_progress(total, current_rate):
+                        nonlocal total_progress
+                        total_progress += current_rate
+                        percent_complete = total_progress / total
+                        frames_per_second = (
+                            total_progress
+                            / ((get_ms() - start_time) / 1000)
+                        )
+                        estimated_done_seconds = int(
+                            (total - total_progress)
+                            // frames_per_second
+                        )
+                        progress_text = (
+                            f"Transcribing Audio ({total_progress}/{total} frames, "
+                            f"{frames_per_second:.2f} frames/s, "
+                            f"around {estimated_done_seconds} seconds left.)"
+                        )
+                        progress_bar.progress(
+                            percent_complete,
+                            text=progress_text
+                        )
+
+                    transcript = transcribe(
+                        st.session_state.audio_file_path,
+                        progress_callback=update_progress
+                    )
+
+                    progress_bar.empty()
+
+            st.session_state.transcript = transcript
+            session.save_session(st.session_state)
+
+        # PDF file hasn't been uploaded
+        if "pdf_file_path" not in st.session_state:
+            pdf_file = st.file_uploader("PDF", type="pdf")
+            if pdf_file is not None:
+                with st.spinner("Saving PDF file..."):
+                    st.session_state.pdf_file_path = save_file(pdf_file)
+                    session.save_session(st.session_state)
+
+                # Rerun when both file first time exist simultaneously
+                if "audio_file_path" in st.session_state:
+                    st.rerun()
+
+        # PDF file uploaded but hasn't been extracted
+        if (
+            "pdf_file_path" in st.session_state
+            and "material" not in st.session_state
+        ):
+            if dummy.USE_DUMMY:
+                st.session_state.material = dummy.DUMMY_MATERIAL
+            else:
+                with st.spinner("Extracting text from PDF..."):
+                    material = pdf2text(st.session_state.pdf_file_path)
+                    st.session_state.material = material
+                    session.save_session(st.session_state)
+
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        if "transcript" in st.session_state:
+            with st.expander("Transcript"):
+                st.download_button(
+                    "Download transcript",
+                    st.session_state.transcript,
+                    "transcript.txt",
+                    "text/plain"
+                )
+                st.write(st.session_state.transcript)
+
+        if (
+            "transcript" in st.session_state
+            and "material" in st.session_state
+            and "documents" not in st.session_state
+        ):
+            st.session_state.documents = [
+                Document(
+                    text=st.session_state.transcript,
+                    extra_info={"type": "raw transcription"}
+                ),
+                Document(
+                    text=st.session_state.material,
+                    extra_info={"type": "raw material"}
+                )
+            ]
+
+        if (
+            "documents" in st.session_state
+            and "summary" not in st.session_state
+        ):
+            if dummy.USE_DUMMY:
+                st.session_state.summary = dummy.DUMMY_SUMMARY
+            else:
+                with st.spinner("Summarizing..."):
+                    documents = st.session_state.documents
+                    summaries = []
+
+                    progress_text = (
+                        f"Summarizing: (Document 1/{len(documents)}, "
+                        "0/? chunks)..."
+                    )
+                    progress_bar = st.progress(0., progress_text)
+
+                    for idx, document in enumerate(documents):
+                        def progress_callback(total_processed, total_chunks):
+                            progress_text = (
+                                "Summarizing: "
+                                f"(Document {idx+1}/{len(documents)}, "
+                                f"{total_processed}/{total_chunks} chunks)..."
+                            )
+                            progress_bar.progress(
+                                total_processed / total_chunks,
+                                progress_text
+                            )
+                        summary = loop.run_until_complete(summarise(
+                            document,
+                            progress_callback
+                        ))
+                        summaries.append(summary)
+
+                    summary = "\n\n".join(summaries)
+                    progress_bar = progress_bar.progress(
+                        1.,
+                        "Creating a merged summary..."
+                    )
+                    summary = loop.run_until_complete(summarise(Document(
+                        text=summary,
+                        extra_info={"type": "summary of transcription and material"}
+                    )))
+                    st.session_state.summary = summary
+                    session.save_session(st.session_state)
+
+                    progress_bar.empty()
+
+            st.session_state.documents.append(Document(
+                text=st.session_state.summary,
+                extra_info={"type": "summary"}
+            ))
+    else:
+        # Prepare the topic and add it to the session
+        topic_path = os.path.join(user.get_base_path(), "topics", st.session_state.topic)
+        document_text, audio_text, summary = prepare_topic(topic_path)
+        
+        st.session_state.documents = []
+        
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+        
+        for audio_transcript in audio_text:
+            st.session_state.documents.append(Document(
+                text=audio_transcript,
+                extra_info={"type": "raw transcription"}
+            ))
+        
+        for document in document_text:
+            st.session_state.documents.append(Document(
+                text=document,
+                extra_info={"type": "raw material"}
+            ))
+
+        st.session_state.transcript = "\n\n".join(audio_text)
+        st.session_state.material = "\n\n".join(document_text)
+            
+        st.session_state.summary = summary
         st.session_state.documents.append(Document(
-            text=st.session_state.summary,
+            text=summary,
             extra_info={"type": "summary"}
         ))
+        
 
     if (
         "summary" in st.session_state

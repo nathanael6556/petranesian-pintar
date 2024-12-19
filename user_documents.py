@@ -1,4 +1,5 @@
 import streamlit as st
+from documents_manager import clear_all_special_files, get_sections
 from users import auth_check, get_st_user
 import re
 import os
@@ -30,17 +31,8 @@ def create_section():
 if st.button("Create new section", type="primary"):
     create_section()
     
-def get_sections() -> list[str]:
-    base_path = user.get_base_path()
-    
-    # Get all directories in base_path/topics, if does not exist, create it
-    if not os.path.exists(os.path.join(base_path, "topics")):
-        os.mkdir(os.path.join(base_path, "topics"))
-    sections = [d.name for d in os.scandir(os.path.join(base_path, "topics")) if d.is_dir()]
-    return sections
-    
-active_section = st.selectbox("Selected section", get_sections())
-uploaded_files = st.file_uploader("Upload files", type=["pdf", "md", "txt", "mp3", "m4a", "wav"], accept_multiple_files=True)
+active_section = st.selectbox("Selected section", get_sections(user))
+uploaded_files = st.file_uploader("Upload files", type=["pdf", "mp3", "m4a", "wav"], accept_multiple_files=True)
 
 if uploaded_files and active_section:
     for uploaded_file in uploaded_files:
@@ -58,13 +50,35 @@ def render_file(file_path: str):
         return
     
     with st.container(border=True):
+        col1, col2, col3 = st.columns([8, 2, 1])
+        
         file_name = os.path.basename(file_path)
-        st.markdown(f"{file_name}")
-        st.download_button(file_name, file_path, "Download")
+        
+        with col1:
+            st.markdown(f"{file_name}")
+        with col2:
+            st.download_button("Download", file_path, file_name, key=file_path+"_download")
+            
+        with col3:
+            if st.button("🗑️", key=file_path+"_delete"):
+                os.remove(file_path)
+                st.rerun()
+            
+        # If .md, show the contents
+        if file_name.endswith(".md"):
+            with st.expander("Show contents"):
+                with open(file_path, "r") as f:
+                    content = f.read()
+                st.markdown(content)
     
 if active_section:
+    topic_path = os.path.join(user.get_base_path(), "topics", active_section)
+
+    if st.button("Clear all special files"):
+        clear_all_special_files(topic_path)
+    
     # Show all the files in the section
-    files = os.listdir(os.path.join(user.get_base_path(), "topics", active_section))
+    files = os.listdir(topic_path)
 
     for file in files:
-        render_file(os.path.join(user.get_base_path(), "topics", active_section, file))
+        render_file(os.path.join(topic_path, file))
