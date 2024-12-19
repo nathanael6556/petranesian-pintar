@@ -41,12 +41,20 @@ def get_unprocessed_audio_files(topic_path: str) -> list[str]:
     audio_files = get_audio_files(topic_path)
     original_audio_files = [f for f in audio_files if not f.endswith("_text.md")]
     
-    # for each audio file, check if it has a _text.md file
+    # for each audio file, check if it has a .wav file and a _text.md file under it
     unprocessed_audio_files = []
     for audio_file in original_audio_files:
-        text_file = audio_file + "_text.md"
-        if not os.path.exists(os.path.join(topic_path, text_file)):
+        # split extension
+        base_name, ext = os.path.splitext(audio_file)
+        wav_file = base_name + ".wav"
+        
+        text_file = base_name + "_text.md"
+        
+        if not os.path.exists(os.path.join(topic_path, wav_file)):
             unprocessed_audio_files.append(audio_file)
+        elif not os.path.exists(os.path.join(topic_path, text_file)):
+            unprocessed_audio_files.append(audio_file)
+        
             
     return unprocessed_audio_files
 

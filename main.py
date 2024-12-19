@@ -113,6 +113,7 @@ def prepare_topic(topic_path: str):
                 
     for audio_file_path in unprocessed_audio_files:
         base_name = os.path.basename(audio_file_path)
+        
         with st.spinner(f"Transcribing {base_name}..."):
                 progress_bar = st.progress(0., "Transcoding audio...")
                 total_progress = 0
@@ -145,8 +146,10 @@ def prepare_topic(topic_path: str):
                     progress_callback=update_progress
                 )
                 
+                base_name, ext = os.path.splitext(audio_file_path)
+                
                 # Save as _text.md
-                text_file = audio_file_path + "_text.md"
+                text_file = base_name + "_text.md"
                 with open(os.path.join(topic_path, text_file), "w") as f:
                     f.write(transcript)
 
