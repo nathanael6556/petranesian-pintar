@@ -156,9 +156,10 @@ def prepare_topic(topic_path: str):
                 progress_bar.empty()
                 
     processed_documents, processed_audio_files = get_processed_files_content(topic_path)
+    print(processed_documents, processed_audio_files)
                 
-    # If unprocessed exists, recreate the summary
-    if len(unprocessed_documents) + len(unprocessed_audio_files) > 0:
+    # If unprocessed exists or summary.md is not exist, recreate the summary
+    if (len(unprocessed_documents) + len(unprocessed_audio_files) > 0) or not os.path.exists(os.path.join(topic_path, "summary.md")):
         with st.spinner("Summarizing..."):
             with open(os.path.join(topic_path, "summary.md"), "w") as f:
                 documents = processed_documents + processed_audio_files

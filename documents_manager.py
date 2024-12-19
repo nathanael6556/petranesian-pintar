@@ -41,6 +41,13 @@ def get_unprocessed_audio_files(topic_path: str) -> list[str]:
     audio_files = get_audio_files(topic_path)
     original_audio_files = [f for f in audio_files if not f.endswith("_text.md")]
     
+    # make sure the audio file does not have a .wav equivalent of the same name
+    for audio_file in original_audio_files:
+        base_name, ext = os.path.splitext(audio_file)
+        wav_file = base_name + ".wav"
+        if os.path.exists(os.path.join(topic_path, wav_file)):
+            original_audio_files.remove(audio_file)
+    
     # for each audio file, check if it has a .wav file and a _text.md file under it
     unprocessed_audio_files = []
     for audio_file in original_audio_files:
@@ -65,11 +72,18 @@ def get_file_content(file_path: str) -> str:
 def get_processed_files_content(topic_path: str) -> tuple[list[str], list[str]]:
     # Processed files are those with _text.md
     documents = get_documents(topic_path)
-    processed_documents = [f for f in documents if f.endswith("_text.md")]
-    processed_documents_contents = [get_file_content(os.path.join(topic_path, f)) for f in processed_documents]
+    documents_text_files = [f + ".md" for f in documents]
+    print("documents_text_files: ", documents_text_files)
+    # filter exists
+    documents_text_files = [f for f in documents_text_files if os.path.exists(os.path.join(topic_path, f))]
+    processed_documents_contents = [get_file_content(os.path.join(topic_path, f)) for f in documents_text_files]
     
     audio_files = get_audio_files(topic_path)
-    processed_audio_files = [f for f in audio_files if f.endswith("_text.md")]
+    print("audio_files: ", audio_files)
+    processed_audio_files = [os.path.splitext(f)[0] + "_text.md" for f in audio_files]
+    print("processed_audio_files: ", processed_audio_files)
+    # filter exists
+    processed_audio_files = [f for f in processed_audio_files if os.path.exists(os.path.join(topic_path, f))]
     processed_audio_file_contents = [get_file_content(os.path.join(topic_path, f)) for f in processed_audio_files]
     
     return processed_documents_contents, processed_audio_file_contents
